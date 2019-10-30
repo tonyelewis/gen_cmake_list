@@ -66,21 +66,32 @@ with open( compile_commands_file, 'r') as compile_commands_fh:
 	compile_commands = json.loads( compile_commands_fh.read() )
 
 def extract_flags_from_cmake_db(compile_commands):
-	definitions     = set()
+	definitions     = {}
 	system_includes = set()
+	local_includes  = set()
 	for compile_command in compile_commands:
 		command_parts = compile_command[ 'command' ].split()
 		for [ cmd_idx, cmd_part ] in enumerate( command_parts ):
 			if cmd_part == '-isystem':
 				system_includes.add( command_parts[ cmd_idx + 1 ] )
+			if cmd_part.startswith( '-I' ):
+				if cmd_part == '-I':
+					local_includes.add( command_parts[ cmd_idx + 1 ] )
+				else:
+					local_includes.add( cmd_part[2:] )
 			elif cmd_part.startswith( '-D' ):
-				definitions.add( cmd_part )
+				definition_key = cmd_part[2:].split( '=' )[ 0 ]
+				definitions[ definition_key ] = cmd_part
 	return [
-		*sorted( definitions ),
+		*sorted( definitions.values() ),
+		*list( map(
+			lambda x: '-I' + x,
+			sorted( local_includes )
+		) ),
 		*list( map(
 			lambda x: '-isystem ' + x,
 			sorted( system_includes )
-		) )
+		) ),
 	]
 
 flags = extract_flags_from_cmake_db(compile_commands)
