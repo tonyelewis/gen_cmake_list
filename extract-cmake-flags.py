@@ -19,7 +19,7 @@ local_args        = all_args[ 0                     : arg_breaker_index ]
 cmake_args        = all_args[ arg_breaker_index + 1 : len( all_args )   ]
 
 arg_parser = argparse.ArgumentParser(
-	description="Extract the -D... and -isystem flags from the compile commands CMake generates.",
+	description="Extract the -std=..., -D... and -isystem flags from the compile commands CMake generates.",
 	epilog="Append arguments to pass-through to CMake after a dummy '--' argument",
 )
 arg_parser.add_argument('--conan-profile-file', type=Path,
@@ -69,6 +69,7 @@ def extract_flags_from_cmake_db(compile_commands):
 	definitions     = {}
 	system_includes = set()
 	local_includes  = set()
+	cpp_standard    = None
 	for compile_command in compile_commands:
 		command_parts = compile_command[ 'command' ].split()
 		for [ cmd_idx, cmd_part ] in enumerate( command_parts ):
@@ -82,6 +83,8 @@ def extract_flags_from_cmake_db(compile_commands):
 			elif cmd_part.startswith( '-D' ):
 				definition_key = cmd_part[2:].split( '=' )[ 0 ]
 				definitions[ definition_key ] = cmd_part
+			elif cmd_part.startswith( '-std=' ):
+				cpp_standard = cmd_part[5:]
 	return [
 		*sorted( definitions.values() ),
 		*list( map(
@@ -92,6 +95,7 @@ def extract_flags_from_cmake_db(compile_commands):
 			lambda x: '-isystem ' + x,
 			sorted( system_includes )
 		) ),
+		*( [] if cpp_standard is None else [ f'-std={cpp_standard}' ] )
 	]
 
 flags = extract_flags_from_cmake_db(compile_commands)
