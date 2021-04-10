@@ -14,8 +14,8 @@ import json
 import sys
 
 # Example commands:
-#   extract-cmake-flags.py                                                                    -- -DCMAKE_TOOLCHAIN_FILE=$(ls -1d ~/puppet/toolchain-files/clang_rwdi.cmake )
-#   extract-cmake-flags.py --conan-profile-file $(ls -1d ~/puppet/conan-profiles/clang_rwdi ) -- -DCMAKE_TOOLCHAIN_FILE=$(ls -1d ~/puppet/toolchain-files/clang_rwdi.cmake )
+#   extract-cmake-flags.py                            -- -DCMAKE_TOOLCHAIN_FILE=$(ls -1d ~/puppet/toolchain-files/clang_rwdi.cmake )
+#   extract-cmake-flags.py --conan-profile clang_rwdi -- -DCMAKE_TOOLCHAIN_FILE=$(ls -1d ~/puppet/toolchain-files/clang_rwdi.cmake )
 
 # A list of standard build directories, in which to search for include directories that are constructed as part of the build (eg git version headers)
 CANDIDATE_REL_INC_BASES: List[Path] = [
@@ -115,8 +115,8 @@ def main():
 		description="Extract the -std=..., -D... and -isystem flags from the compile commands CMake generates.",
 		epilog="Append arguments to pass-through to CMake after a dummy '--' argument",
 	)
-	arg_parser.add_argument('--conan-profile-file', type=Path,
-                         help='Run Conan before CMake using the specified file')
+	arg_parser.add_argument('--conan-profile', type=str,
+                         help='Run Conan before CMake using the specified profile')
 
 	# Process the command-line arguments
 	all_args = sys.argv[1:]
@@ -129,7 +129,7 @@ def main():
 	args = arg_parser.parse_args(local_args)
 
 	# Log the args
-	logger.info(f'Conan profile file                 : { str(args.conan_profile_file) }')
+	logger.info(f'Conan profile                      : { str(args.conan_profile) }')
 	logger.info(f'Arguments to pass through to CMake : { " ".join( cmake_args ) }')
 
 	# In a temporary directory...
@@ -137,14 +137,14 @@ def main():
 		temp_dir = Path(temp_dir_handle)
 
 		# If there's a Conan profile command, run Conan
-		if args.conan_profile_file is not None:
+		if args.conan_profile is not None:
 			conan_command: List[str] = [
 				'conan',
 				'install',
 				'--build', 'missing',
 				'--install-folder', str(temp_dir),
 				'.',
-				'--profile', str(args.conan_profile_file),
+				'--profile', str(args.conan_profile),
 			]
 			logger.info(f'About to run Conan command: { shlex.join(conan_command) }')
 			conan_result = subprocess.run(conan_command, check=False, capture_output=True, text=True)
