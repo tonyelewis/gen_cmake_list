@@ -15,7 +15,9 @@ import sys
 
 # Example commands:
 #   extract-cmake-flags.py                            -- -DCMAKE_TOOLCHAIN_FILE=$(ls -1d ~/puppet/toolchain-files/clang_rwdi.cmake )
-#   extract-cmake-flags.py --conan-profile clang_rwdi -- -DCMAKE_TOOLCHAIN_FILE=$(ls -1d ~/puppet/toolchain-files/clang_rwdi.cmake )
+#   extract-cmake-flags.py --conan-profile clang_rwdi -- -DCMAKE_TOOLCHAIN_FILE=$(ls -1d ~/puppet/toolchain-files/clang_rwdi.cmake ) -DCMAKE_MODULE_PATH=#EXTRACT_BUILD_DIR#
+#
+# Note that any #EXTRACT_BUILD_DIR# in the cmake args gets replaced with the build dir being used
 
 # A list of standard build directories, in which to search for include directories that are constructed as part of the build (eg git version headers)
 CANDIDATE_REL_INC_BASES: List[Path] = [
@@ -118,23 +120,23 @@ def main():
 	arg_parser.add_argument('--conan-profile', type=str,
                          help='Run Conan before CMake using the specified profile')
 
-	# Process the command-line arguments
-	all_args = sys.argv[1:]
-	num_arg_breakers = all_args.count('--')
-	if num_arg_breakers > 1:
-		arg_parser.error("The command line arguments breaker '--' should only be used at most once")
-	arg_breaker_index = all_args.index('--') if (num_arg_breakers == 1) else len(all_args)
-	local_args = all_args[0: arg_breaker_index]
-	cmake_args = all_args[arg_breaker_index + 1: len(all_args)]
-	args = arg_parser.parse_args(local_args)
-
-	# Log the args
-	logger.info(f'Conan profile                      : { str(args.conan_profile) }')
-	logger.info(f'Arguments to pass through to CMake : { " ".join( cmake_args ) }')
-
 	# In a temporary directory...
 	with tempfile.TemporaryDirectory() as temp_dir_handle:
 		temp_dir = Path(temp_dir_handle)
+
+		# Process the command-line arguments
+		all_args = sys.argv[1:]
+		num_arg_breakers = all_args.count('--')
+		if num_arg_breakers > 1:
+			arg_parser.error("The command line arguments breaker '--' should only be used at most once")
+		arg_breaker_index = all_args.index('--') if (num_arg_breakers == 1) else len(all_args)
+		local_args = all_args[0: arg_breaker_index]
+		cmake_args = [x.replace('#EXTRACT_BUILD_DIR#', str(temp_dir)) for x in all_args[arg_breaker_index + 1: len(all_args)]]
+		args = arg_parser.parse_args(local_args)
+
+		# Log the args
+		logger.info(f'Conan profile                      : { str(args.conan_profile) }')
+		logger.info(f'Arguments to pass through to CMake : { " ".join( cmake_args ) }')
 
 		# If there's a Conan profile command, run Conan
 		if args.conan_profile is not None:
