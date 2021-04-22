@@ -156,9 +156,9 @@ def main():
 		# Run CMake
 		cmake_command: List[str] = [
 			'cmake',
-			('-B' + str(temp_dir)),
-			'-H.',
-			'-DCMAKE_EXPORT_COMPILE_COMMANDS=ON',
+			'-B', str(temp_dir),
+			'-S', '.',
+			'-D', 'CMAKE_EXPORT_COMPILE_COMMANDS:BOOL=ON',
 			*cmake_args
 		]
 		logger.info(f'About to run CMake command: { shlex.join(cmake_command) }')
